@@ -3,43 +3,22 @@ from datetime import datetime, timedelta
 import requests
 import statistics
 import os
-
-from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame
+import yfinance as yf
 
 # -------- Settings -------- #
 WATCHLIST = ['NVDA', 'LCID', 'TSLA', 'AMD', 'AAPL']
 BULLISH_KEYWORDS = ['partnered', 'contract', 'buyout', 'acquisition', 'approval']
 
-# -------- Alpaca Client -------- #
-alpaca_client = StockHistoricalDataClient(
-    os.getenv("ALPACA_KEY"),
-    os.getenv("ALPACA_SECRET")
-)
-
-# -------- Market Data from Alpaca -------- #
+# -------- Market Data from yfinance -------- #
 def get_real_market_data(symbol):
     try:
-        end = datetime.now()
-        start = end - timedelta(days=14)
-        request = StockBarsRequest(
-            symbol_or_symbols=symbol,
-            timeframe=TimeFrame.Day,
-            start=start,
-            end=end
-        )
-        bars = alpaca_client.get_stock_bars(request).df
-
-        if bars.empty or symbol not in bars.index.get_level_values(0):
+        data = yf.download(symbol, period="11d", interval="1d", progress=False)
+        if data.empty or "Volume" not in data.columns:
             return None, []
-
-        stock_data = bars.loc[symbol]
-        current_volume = stock_data.iloc[-1]['volume']
-        past_volumes = stock_data['volume'].tolist()[:-1]
+        current_volume = int(data["Volume"].iloc[-1])
+        past_volumes = data["Volume"].iloc[:-1].tolist()
         return current_volume, past_volumes
-
-    except Exception as e:
+    except:
         return None, []
 
 # -------- Unusual Volume Detector -------- #
