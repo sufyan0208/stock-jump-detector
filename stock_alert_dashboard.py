@@ -56,10 +56,10 @@ for symbol in WATCHLIST:
             st.success("Unusual Volume Detected")
 
     with col2:
-    st.metric("Tweets (last hour)", tweet_count)
-    # Disabled since tweet_count is a string
-    # if tweet_count > 100:
-    #     st.warning("High Twitter Activity")
+        st.metric("Tweets (last hour)", tweet_count)
+        # Disabled since tweet_count is a string
+        # if tweet_count > 100:
+        #     st.warning("High Twitter Activity")
 
 
     with col3:
