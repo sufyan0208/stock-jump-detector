@@ -4,14 +4,13 @@ import requests
 import statistics
 import os
 
-# -------- Settings -------- #
-WATCHLIST = ['NVDA', 'LCID', 'TSLA', 'AMD', 'AAPL']
-BULLISH_KEYWORDS = ['partnered', 'contract', 'buyout', 'acquisition', 'approval']
-
-# -------- Market Data (mock for now) -------- #
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+
+# -------- Settings -------- #
+WATCHLIST = ['NVDA', 'LCID', 'TSLA', 'AMD', 'AAPL']
+BULLISH_KEYWORDS = ['partnered', 'contract', 'buyout', 'acquisition', 'approval']
 
 # -------- Alpaca Client -------- #
 alpaca_client = StockHistoricalDataClient(
@@ -19,27 +18,34 @@ alpaca_client = StockHistoricalDataClient(
     os.getenv("ALPACA_SECRET")
 )
 
+# -------- Market Data from Alpaca -------- #
 def get_real_market_data(symbol):
-    import datetime
-    end = datetime.datetime.now()
-    start = end - datetime.timedelta(days=14)  # extra days to avoid weekends
-    request = StockBarsRequest(
-        symbol_or_symbols=symbol,
-        timeframe=TimeFrame.Day,
-        start=start,
-        end=end
-    )
-    bars = alpaca_client.get_stock_bars(request).df
-    if symbol not in bars.index.get_level_values(0):
-        return None, []
-    stock_data = bars.loc[symbol]
-    current_volume = stock_data.iloc[-1]['volume']
-    past_volumes = stock_data['volume'].tolist()[:-1]  # exclude current day
-    return current_volume, past_volumes
+    try:
+        end = datetime.now()
+        start = end - timedelta(days=14)
+        request = StockBarsRequest(
+            symbol_or_symbols=symbol,
+            timeframe=TimeFrame.Day,
+            start=start,
+            end=end
+        )
+        bars = alpaca_client.get_stock_bars(request).df
 
+        if bars.empty or symbol not in bars.index.get_level_values(0):
+            return None, []
+
+        stock_data = bars.loc[symbol]
+        current_volume = stock_data.iloc[-1]['volume']
+        past_volumes = stock_data['volume'].tolist()[:-1]
+        return current_volume, past_volumes
+
+    except Exception as e:
+        return None, []
 
 # -------- Unusual Volume Detector -------- #
 def is_unusual_volume(current_volume, historical_volumes):
+    if not historical_volumes:
+        return False
     avg_vol = statistics.mean(historical_volumes)
     return current_volume > avg_vol * 5
 
@@ -68,7 +74,7 @@ for symbol in WATCHLIST:
 
     current_vol, past_vols = get_real_market_data(symbol)
     if not past_vols:
-        st.warning("⚠️ No volume data found.")
+        st.warning(f"⚠️ No volume data found for {symbol}.")
         continue
 
     tweet_count = "N/A (snscrape not supported)"
@@ -84,10 +90,8 @@ for symbol in WATCHLIST:
 
     with col2:
         st.metric("Tweets (last hour)", tweet_count)
-        # Disabled since tweet_count is a string
         # if tweet_count > 100:
         #     st.warning("High Twitter Activity")
-
 
     with col3:
         st.write("Latest Headlines:")
