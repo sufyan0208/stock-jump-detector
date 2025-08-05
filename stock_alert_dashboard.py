@@ -1,5 +1,4 @@
 import streamlit as st
-import snscrape.modules.twitter as sntwitter
 from datetime import datetime, timedelta
 import requests
 import statistics
@@ -20,12 +19,6 @@ def get_mock_market_data(symbol):
 def is_unusual_volume(current_volume, historical_volumes):
     avg_vol = statistics.mean(historical_volumes)
     return current_volume > avg_vol * 5
-
-# -------- Twitter Mention Count -------- #
-def count_recent_tweets(symbol):
-    query = f'${symbol} since:{(datetime.now() - timedelta(hours=1)).date()}'
-    tweets = list(sntwitter.TwitterSearchScraper(query).get_items())
-    return len(tweets)
 
 # -------- News Scan -------- #
 def get_news_headlines(symbol):
@@ -51,7 +44,7 @@ for symbol in WATCHLIST:
     st.subheader(f"{symbol}")
 
     current_vol, past_vols = get_mock_market_data(symbol)
-    tweet_count = count_recent_tweets(symbol)
+    tweet_count = "N/A (snscrape not supported)"
     headlines = get_news_headlines(symbol)
 
     col1, col2, col3 = st.columns(3)
