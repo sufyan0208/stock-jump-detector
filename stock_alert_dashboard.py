@@ -9,11 +9,34 @@ WATCHLIST = ['NVDA', 'LCID', 'TSLA', 'AMD', 'AAPL']
 BULLISH_KEYWORDS = ['partnered', 'contract', 'buyout', 'acquisition', 'approval']
 
 # -------- Market Data (mock for now) -------- #
-def get_mock_market_data(symbol):
-    import random
-    current_volume = random.randint(1_000_000, 10_000_000)
-    past_volumes = [random.randint(500_000, 2_000_000) for _ in range(10)]
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockBarsRequest
+from alpaca.data.timeframe import TimeFrame
+
+# -------- Alpaca Client -------- #
+alpaca_client = StockHistoricalDataClient(
+    os.getenv("ALPACA_KEY"),
+    os.getenv("ALPACA_SECRET")
+)
+
+def get_real_market_data(symbol):
+    import datetime
+    end = datetime.datetime.now()
+    start = end - datetime.timedelta(days=14)  # extra days to avoid weekends
+    request = StockBarsRequest(
+        symbol_or_symbols=symbol,
+        timeframe=TimeFrame.Day,
+        start=start,
+        end=end
+    )
+    bars = alpaca_client.get_stock_bars(request).df
+    if symbol not in bars.index.get_level_values(0):
+        return None, []
+    stock_data = bars.loc[symbol]
+    current_volume = stock_data.iloc[-1]['volume']
+    past_volumes = stock_data['volume'].tolist()[:-1]  # exclude current day
     return current_volume, past_volumes
+
 
 # -------- Unusual Volume Detector -------- #
 def is_unusual_volume(current_volume, historical_volumes):
@@ -43,7 +66,11 @@ st.title("🚨 Stock Jump Detector Dashboard")
 for symbol in WATCHLIST:
     st.subheader(f"{symbol}")
 
-    current_vol, past_vols = get_mock_market_data(symbol)
+    current_vol, past_vols = get_real_market_data(symbol)
+    if not past_vols:
+        st.warning("⚠️ No volume data found.")
+        continue
+
     tweet_count = "N/A (snscrape not supported)"
     headlines = get_news_headlines(symbol)
 
